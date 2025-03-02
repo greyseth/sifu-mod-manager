@@ -1,5 +1,8 @@
-use egui::{style::Interaction, Color32};
-use mods::Mod;
+use std::env::current_exe;
+
+use eframe::glow::NUM_EXTENSIONS;
+use egui::Color32;
+use mods::{scan_directory, Mod};
 use tools::text;
 use settings::settings_window;
 
@@ -8,22 +11,27 @@ mod mods;
 mod settings;
 
 struct ModManager {
-    mod_count: usize,
     mods: Vec<Mod>,
-    open_settings: bool
+    open_settings: bool,
+    game_dir: String,
+    mods_dir: String,
+    launch_options: String
 }
 
 impl Default for ModManager {
     fn default() -> Self {
-        let mut new_mods = Vec::new();
-        new_mods.push(Mod::new("Mod 1".to_string(), 100000));
-        new_mods.push(Mod::new("Mod 2".to_string(), 10000));
-        new_mods.push(Mod::new("Mod 3".to_string(), 15000));
-
+        let mods_dir = if let Ok(exe) = current_exe() {
+            if let Some(path) = exe.parent() {
+                path.to_path_buf().to_string_lossy().to_string()
+            }else {"".to_string()}
+           }else {"".to_string()};
+        
         Self {
-           mod_count: 0,
-           mods: new_mods,
-           open_settings: false
+           mods: scan_directory(&mods_dir),
+           open_settings: false,
+           game_dir: "".to_string(),
+           mods_dir,
+           launch_options: "".to_string()
         }
     }
 }
@@ -37,13 +45,18 @@ impl eframe::App for ModManager {
                 egui::Frame::new().outer_margin(egui::Margin {bottom: 16, ..Default::default()}).show(ui, |ui| {
                     ui.horizontal(|ui| {
                         if ui.button("Refresh mods").clicked() {
-                            self.mod_count = 10;
+                            if self.mods_dir.is_empty() {msgbox::create("No mods directory set", "Please set the mods scanning directory in the settings", msgbox::IconType::Error);}
+                            else {self.mods = scan_directory(&self.mods_dir);}
                         }
                         if ui.button("Enable all").clicked() {
-                            println!("Enabling all mods...");
+                            for m in self.mods.iter_mut() {
+                                m.enabled = true;
+                            }
                         }
                         if ui.button("Disable all").clicked() {
-                            println!("Disabling all mods...");
+                            for m in self.mods.iter_mut() {
+                                m.enabled = false;
+                            }
                         }
                         if ui.button("Settings").clicked() {
                             self.open_settings = true;
@@ -65,7 +78,7 @@ impl eframe::App for ModManager {
                                     ui.label(text(format!("{}", m.name).as_str(), Color32::WHITE, false));
 
                                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                        ui.label(m.size.to_string());
+                                        ui.label(format!("{} KB", (m.size as f64 / 1024.0).to_string()))
                                     });
                                 });
                                 
@@ -78,22 +91,15 @@ impl eframe::App for ModManager {
                     }
                 });
 
-
-                egui::Frame::new().show(ui, |ui| {
-                    ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                        ui.add_space(10.0);
-                        ui.horizontal(|ui| {
-                            let launch_options = ui.add(egui::TextEdit::singleline(&mut String::new()).hint_text("Executable launch options"));
-                            ui.button("Launch Game");
-                        });
-                        ui.add_space(10.0);
-                        ui.button("Apply changes");
-                    });
+                ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
+                    if ui.button(text("Launch Game", Color32::WHITE, true)).clicked() {
+                        if self.game_dir.is_empty() {msgbox::create("No directory set", "Please set game directory in the settings", msgbox::IconType::Error);}
+                    };
                 });
             });
         });
 
-        if self.open_settings {settings_window(ctx, &mut self.open_settings);}
+        if self.open_settings {settings_window(ctx, &mut self.open_settings, &mut self.game_dir, &mut self.mods_dir, &mut self.launch_options);}
     }
 }
 
