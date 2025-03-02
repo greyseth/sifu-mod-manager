@@ -8,3 +8,5 @@ eframe = "0.31.0"
 egui = "0.31.0"
 msgbox = "0.7.0"
 rfd = "0.15.2"
+serde = {version = "1.0.218", features = ["derive"]}
+toml = "0.8.20"

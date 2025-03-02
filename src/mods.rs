@@ -1,5 +1,8 @@
 use std::fs::{self, FileType};
 
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize)]
 pub struct Mod {
     pub enabled: bool,
     pub name: String,

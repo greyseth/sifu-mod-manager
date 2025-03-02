@@ -1,38 +1,55 @@
-use std::env::current_exe;
+use std::{env::current_exe, fs, path::{Path, PathBuf}};
 
 use eframe::glow::NUM_EXTENSIONS;
 use egui::Color32;
 use mods::{scan_directory, Mod};
+use serde::{Deserialize, Serialize};
 use tools::text;
-use settings::settings_window;
+use settings::{save_settings, settings_window};
 
 mod tools;
 mod mods;
 mod settings;
 
+#[derive(Serialize, Deserialize)]
 struct ModManager {
     mods: Vec<Mod>,
     open_settings: bool,
     game_dir: String,
+    game_dir_valid: bool,
     mods_dir: String,
     launch_options: String
 }
 
 impl Default for ModManager {
     fn default() -> Self {
-        let mods_dir = if let Ok(exe) = current_exe() {
-            if let Some(path) = exe.parent() {
-                path.to_path_buf().to_string_lossy().to_string()
+        // This part really sucks...
+        let mut exe = PathBuf::new();
+        let mut path= Path::new("");
+        let pathname = if let Ok(_exe) = current_exe() {
+            exe = _exe;
+            if let Some(_path) = exe.parent() {
+                path = &_path;
+                _path.to_path_buf().to_string_lossy().to_string()
             }else {"".to_string()}
-           }else {"".to_string()};
+        }else {"".to_string()};
         
-        Self {
-           mods: scan_directory(&mods_dir),
+        let mut return_self = Self {
+           mods: scan_directory(&pathname),
            open_settings: false,
            game_dir: "".to_string(),
-           mods_dir,
-           launch_options: "".to_string()
+           mods_dir: pathname,
+           launch_options: "".to_string(),
+           game_dir_valid: false
+        };
+        
+        // Reads from settings.toml
+        if path.join("settings.toml").exists() {
+            let settings_content = fs::read_to_string(path.join("settings.toml")).expect("Failed to read settings file");
+            return_self = toml::from_str(&settings_content).ok().unwrap();
         }
+        
+        return_self
     }
 }
 
@@ -78,7 +95,7 @@ impl eframe::App for ModManager {
                                     ui.label(text(format!("{}", m.name).as_str(), Color32::WHITE, false));
 
                                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                        ui.label(format!("{} KB", (m.size as f64 / 1024.0).to_string()))
+                                        ui.label(format!("{:.2} KB", (m.size as f64 / 1024.0).to_string()))
                                     });
                                 });
                                 
@@ -92,14 +109,22 @@ impl eframe::App for ModManager {
                 });
 
                 ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                    if ui.button(text("Launch Game", Color32::WHITE, true)).clicked() {
-                        if self.game_dir.is_empty() {msgbox::create("No directory set", "Please set game directory in the settings", msgbox::IconType::Error);}
-                    };
+                    ui.add_space(10.0);
+                    ui.horizontal(|ui| {
+                        ui.button(text("Apply Changes", Color32::WHITE, true));
+                        if ui.button(text("Launch Game", Color32::WHITE, true)).clicked() {
+                            if self.game_dir.is_empty() {msgbox::create("No directory set", "Please set game directory in the settings", msgbox::IconType::Error);}
+                            else {
+                                if !self.game_dir_valid {msgbox::create("Invalid game path", "Please enter a valid path to Sifu.exe", msgbox::IconType::Error);}
+                                else {save_settings(&self);}
+                            }
+                        };
+                    });
                 });
             });
         });
 
-        if self.open_settings {settings_window(ctx, &mut self.open_settings, &mut self.game_dir, &mut self.mods_dir, &mut self.launch_options);}
+        if self.open_settings {settings_window(ctx, self);}
     }
 }
 
