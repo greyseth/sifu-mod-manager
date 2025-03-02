@@ -1,8 +1,10 @@
-use std::fs::{self, FileType};
+use std::{fs::{self, create_dir, create_dir_all, FileType}, path::Path};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+use crate::{settings::save_settings, tools::{copy_dir_all, remove_dir}, ModManager};
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Mod {
     pub enabled: bool,
     pub name: String,
@@ -10,12 +12,22 @@ pub struct Mod {
 }
 
 impl Mod {
-    pub fn new(name: String, size: usize) -> Self {
-        Mod {enabled: false, name, size}
+    pub fn new(name: String, size: usize, enabled: bool) -> Self {
+        Mod {name, size, enabled}
     }
 }
 
-pub fn scan_directory(mods_dir: &String) -> Vec<Mod> {
+fn is_enabled(mods: &Vec<Mod>, file_name: String) -> bool {
+    let mut return_bool = false;
+
+    for m in mods.iter() {
+        if m.name == file_name && m.enabled {return_bool = true;}
+    }
+
+    return_bool
+}
+
+pub fn scan_directory(mods_dir: &String, mods: &mut Vec<Mod>) -> Vec<Mod> {
     let mut scanned_mods = Vec::new();
     
     let path = std::path::Path::new(mods_dir);
@@ -33,16 +45,18 @@ pub fn scan_directory(mods_dir: &String) -> Vec<Mod> {
                                     .into_iter()
                                     .flat_map(|entries| entries.flatten())
                                     .filter_map(|entry| entry.metadata().ok())
-                                    .map(|metadata| metadata.len() as usize).sum()
+                                    .map(|metadata| metadata.len() as usize).sum(),
+                                is_enabled(&mods, entry.file_name().to_string_lossy().to_string())
                             ));
                         }else {
-                            // FIXME: path.extension() returning None for some reason
-                            if let Some(extension) = path.extension() {
-                                if extension == "zip" || extension == "rar" {
-                                    scanned_mods.push(Mod::new(
-                                        entry.file_name().to_string_lossy().to_string(), 
-                                    metadata.len() as usize));
-                                }
+                            let file_name = entry.file_name().to_string_lossy().to_string();
+                            if file_name.ends_with("zip") || file_name.ends_with("rar") || file_name.ends_with("7z") {
+                                scanned_mods.push(
+                                    Mod::new(
+                                        file_name, 
+                                        metadata.len() as usize, 
+                                        is_enabled(&mods, entry.file_name().to_string_lossy().to_string()))
+                                );
                             }
                         }
                     }
@@ -52,4 +66,40 @@ pub fn scan_directory(mods_dir: &String) -> Vec<Mod> {
     }else {msgbox::create("Invalid path", "The provided mods scanning path is invalid", msgbox::IconType::Error);}
     
     scanned_mods
+}
+
+pub fn clear_mods(game_dir: &str) {
+    let game_path = Path::new(game_dir).parent();
+    if let Some(path) = game_path {
+        let mods_path = path.join("Sifu/Content/Paks/~mods");
+        if mods_path.exists() {
+            remove_dir(&mods_path);
+        }else {
+            create_dir_all(mods_path);
+        }
+    }
+}
+
+pub fn apply_mods(mod_manager: &mut ModManager) {
+    clear_mods(&mod_manager.game_dir);
+
+    let game_path = Path::new(&mod_manager.game_dir).parent();
+    if let Some(path) = game_path {
+        let enabled_mods: Vec<Mod> = mod_manager.mods.iter().filter(|m| m.enabled).cloned().collect();
+        for m in enabled_mods.iter() {
+            let mod_path = Path::new(&mod_manager.mods_dir).join(&m.name);
+            if mod_path.is_dir() {
+                let copied_files = copy_dir_all(mod_path, path.join("Sifu/Content/Paks/~mods"));
+                println!("{:?}", copied_files);
+                match copied_files {
+                    Ok(()) => msgbox::create("Applied selected mods", "Mods successfully applied", msgbox::IconType::Info),
+                    Err(err) => msgbox::create("Failed to apply mods", "An error has occurred", msgbox::IconType::Error),
+                };
+            }else {
+                // TODO: Implement zip extraction
+            }
+        }
+    }
+
+    save_settings(mod_manager);
 }

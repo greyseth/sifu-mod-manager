@@ -1,11 +1,12 @@
-use std::{env::current_exe, fs, path::{Path, PathBuf}};
+use std::{env::current_exe, fmt::format, fs, path::{Path, PathBuf}};
 
 use eframe::glow::NUM_EXTENSIONS;
 use egui::Color32;
-use mods::{scan_directory, Mod};
+use mods::{apply_mods, scan_directory, Mod};
 use serde::{Deserialize, Serialize};
 use tools::text;
 use settings::{save_settings, settings_window};
+use win_msgbox::{CancelTryAgainContinue, Okay, OkayCancel};
 
 mod tools;
 mod mods;
@@ -35,7 +36,7 @@ impl Default for ModManager {
         }else {"".to_string()};
         
         let mut return_self = Self {
-           mods: scan_directory(&pathname),
+           mods: scan_directory(&pathname, &mut Vec::new()),
            open_settings: false,
            game_dir: "".to_string(),
            mods_dir: pathname,
@@ -63,7 +64,7 @@ impl eframe::App for ModManager {
                     ui.horizontal(|ui| {
                         if ui.button("Refresh mods").clicked() {
                             if self.mods_dir.is_empty() {msgbox::create("No mods directory set", "Please set the mods scanning directory in the settings", msgbox::IconType::Error);}
-                            else {self.mods = scan_directory(&self.mods_dir);}
+                            else {self.mods = scan_directory(&self.mods_dir, &mut self.mods); save_settings(&self);}
                         }
                         if ui.button("Enable all").clicked() {
                             for m in self.mods.iter_mut() {
@@ -81,37 +82,45 @@ impl eframe::App for ModManager {
                     });
                 });
 
-                egui::ScrollArea::vertical()
-                .auto_shrink([false; 2])
-                .show(ui, |ui| {
-                    for m in &mut self.mods {
-                        let response = egui::Frame::new()
-                            .fill(Color32::BLACK)
-                            .corner_radius(egui::CornerRadius::same(5))
-                            .inner_margin(egui::Margin::same(5))
-                            .show(ui, |ui| {
-                                let response = ui.horizontal(|ui| {
-                                    ui.checkbox(&mut m.enabled, "");
-                                    ui.label(text(format!("{}", m.name).as_str(), Color32::WHITE, false));
+                if self.mods.len() > 0 {
+                    egui::ScrollArea::vertical()
+                    .auto_shrink([false; 2])
+                    .show(ui, |ui| {
+                        for m in &mut self.mods {
+                            let response = egui::Frame::new()
+                                .fill(Color32::BLACK)
+                                .corner_radius(egui::CornerRadius::same(5))
+                                .inner_margin(egui::Margin::same(5))
+                                .show(ui, |ui| {
+                                    let response = ui.horizontal(|ui| {
+                                        ui.checkbox(&mut m.enabled, "");
+                                        ui.label(text(format!("{}", m.name).as_str(), Color32::WHITE, false));
 
-                                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                        ui.label(format!("{:.2} KB", (m.size as f64 / 1024.0).to_string()))
+                                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                            ui.label(format!("{:.2} KB", (m.size as f64 / 1024.0).to_string()))
+                                        });
                                     });
-                                });
-                                
-                                response.response
-                            }).response.interact(egui::Sense::click());
+                                    
+                                    response.response
+                                }).response.interact(egui::Sense::click());
 
-                        if response.clicked() {
-                            m.enabled = !m.enabled;
+                            if response.clicked() {
+                                m.enabled = !m.enabled;
+                            }
                         }
-                    }
-                });
+                    });
+                }else {
+                    ui.vertical(|ui| {
+                        ui.label(text(format!("No mods found on {}", self.mods_dir).as_str(), Color32::WHITE, true));
+                        if ui.button("Change mods directory").clicked() {self.open_settings = true;}
+                        if ui.button("Refresh mods list").clicked() {self.mods = scan_directory(&self.mods_dir, &mut self.mods); save_settings(&self);}
+                    });
+                }
 
                 ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
                     ui.add_space(10.0);
                     ui.horizontal(|ui| {
-                        ui.button(text("Apply Changes", Color32::WHITE, true));
+                        if ui.button(text("Apply Changes", Color32::WHITE, true)).clicked() {apply_mods(self);};
                         if ui.button(text("Launch Game", Color32::WHITE, true)).clicked() {
                             if self.game_dir.is_empty() {msgbox::create("No directory set", "Please set game directory in the settings", msgbox::IconType::Error);}
                             else {

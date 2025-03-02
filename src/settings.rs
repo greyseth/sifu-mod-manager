@@ -31,8 +31,11 @@ pub fn settings_window(ctx: &egui::Context, mod_manager: &mut ModManager) {
             ui.add_sized([350.0, 0.0], egui::TextEdit::singleline(&mut mod_manager.mods_dir).hint_text("Mods Scan Directory").desired_width(INFINITY));
             ui.add_space(3.0);
             if ui.button(text("...", Color32::WHITE, true)).clicked() {
-                pick_folder(&mut mod_manager.mods_dir);
+                pick_folder(&mut mod_manager.mods_dir, &mut mod_manager.mods);
             };
+
+            // FIXME: Refreshing doesn't work on settings page
+            if ui.button("Refresh mod list").clicked() {scan_directory(&mod_manager.mods_dir, &mut mod_manager.mods);}
         });
 
         ui.add_space(10.0);
@@ -60,10 +63,11 @@ fn pick_executable(game_dir: &mut String, game_dir_valid: &mut bool) {
     }
 }
 
-fn pick_folder(mods_dir: &mut String) {
+fn pick_folder(mods_dir: &mut String, mods: &mut Vec<Mod>) {
     if let Some(path) = FileDialog::new().pick_folder() {
         *mods_dir = path.display().to_string();
-        scan_directory(mods_dir);
+        // FIXME: Refreshing doesn't work on settings page
+        scan_directory(&path.display().to_string(), mods);
     }
 }
 

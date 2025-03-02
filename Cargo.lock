@@ -2937,6 +2937,7 @@ dependencies = [
  "rfd",
  "serde",
  "toml",
+ "win-msgbox",
 ]
 
 [[package]]
@@ -3757,6 +3758,15 @@ dependencies = [
  "js-sys",
  "log",
  "web-sys",
+]
+
+[[package]]
+name = "win-msgbox"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b293d082c6da3f8e9f58a9d2fb076a61737b8f752fb559550a0a864ccfa2bd8"
+dependencies = [
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
