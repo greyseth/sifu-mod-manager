@@ -11,3 +11,4 @@ rfd = "0.15.2"
 serde = {version = "1.0.218", features = ["derive"]}
 toml = "0.8.20"
 win-msgbox = "0.2.1"
+zip = "2.2.3"

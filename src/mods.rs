@@ -96,10 +96,42 @@ pub fn apply_mods(mod_manager: &mut ModManager) {
                     Err(err) => msgbox::create("Failed to apply mods", "An error has occurred", msgbox::IconType::Error),
                 };
             }else {
-                // TODO: Implement zip extraction
+                if m.name.ends_with("zip") {
+                    let zip_file = fs::File::open(mod_path);
+                    if let Ok(file) = zip_file {
+                        let archive = zip::ZipArchive::new(file);
+                        if let Ok(mut archive) = archive {
+                            for i in 0..archive.len() {
+                                let archive_file = archive.by_index(i);
+                                if let Ok(mut archive_file) = archive_file {
+                                    let output_path = path.join("Sifu/Content/Paks/~mods").join(archive_file.name());
+
+                                    if archive_file.is_dir() {
+                                        fs::create_dir_all(output_path);
+                                    }else {
+                                        let output_file = fs::File::create(&output_path);
+                                        if let Ok(mut output_file) = output_file {
+                                            std::io::copy(&mut archive_file, &mut output_file);
+                                        }
+                                    }
+                                }else {
+                                    msgbox::create("Failed to extract file", format!("Failed to extract a file from {}", m.name).as_str(), msgbox::IconType::Error);
+                                }
+                            }
+                        }else {extract_fail(&m.name);}
+                    }else {extract_fail(&m.name);}
+                }else if m.name.ends_with("rar") {
+                    // TODO: Implement rar extraction
+                }else if m.name.ends_with("7z") {
+                    // TODO: Implement 7z extraction
+                }
             }
         }
     }
 
     save_settings(mod_manager);
+}
+
+fn extract_fail(file_name: &String) {
+    msgbox::create("Failed to extract", format!("Failed to extract {}", file_name).as_str(), msgbox::IconType::Error);
 }
