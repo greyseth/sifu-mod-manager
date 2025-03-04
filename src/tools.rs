@@ -12,8 +12,8 @@ pub fn remove_dir(path: &Path) {
             if let Ok(entry) = entry {
                 if let Ok(metadata) = entry.metadata() {
                     if metadata.is_dir() {
-                        remove_dir(&path);
-                        fs::remove_dir(path);
+                        remove_dir(&entry.path());
+                        fs::remove_dir(entry.path());
                     }else {
                         fs::remove_file(entry.path());
                     }
