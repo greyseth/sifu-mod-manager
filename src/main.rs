@@ -6,11 +6,27 @@ use mods::{apply_mods, scan_directory, Mod};
 use serde::{Deserialize, Serialize};
 use tools::text;
 use settings::{save_settings, settings_window};
+use urlencoding::encode;
 use win_msgbox::{CancelTryAgainContinue, Okay, OkayCancel};
 
 mod tools;
 mod mods;
 mod settings;
+
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
+enum Platform {
+    Epic, Steam, Direct
+}
+
+impl Platform {
+    pub fn to_string(&self) -> &'static str {
+        match self {
+            Platform::Epic => "Epic Games",
+            Platform::Steam => "Steam",
+            Platform::Direct => "Launch executable directly"
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 struct ModManager {
@@ -19,7 +35,8 @@ struct ModManager {
     game_dir: String,
     game_dir_valid: bool,
     mods_dir: String,
-    launch_options: String
+    launch_options: String,
+    platform: Platform
 }
 
 impl Default for ModManager {
@@ -41,7 +58,8 @@ impl Default for ModManager {
            game_dir: "".to_string(),
            mods_dir: pathname,
            launch_options: "".to_string(),
-           game_dir_valid: false
+           game_dir_valid: false,
+           platform: Platform::Steam
         };
         
         // Reads from settings.toml
@@ -128,9 +146,28 @@ impl eframe::App for ModManager {
                                 else {
                                     save_settings(&self);
 
-                                    let mut launch_command = std::process::Command::new(&self.game_dir);
-                                    if !self.launch_options.is_empty() {launch_command.args(self.launch_options.split_whitespace());}
-                                    if let Err(_) = launch_command.spawn() {msgbox::create("Failed to launch game", "Failed to launch game", msgbox::IconType::Error);}
+                                    match self.platform {
+                                        Platform::Direct => {
+                                            let mut launch_command = std::process::Command::new(&self.game_dir);
+                                            if !self.launch_options.is_empty() {launch_command.args(self.launch_options.split_whitespace());}
+                                            if let Err(_) = launch_command.spawn() {msgbox::create("Failed to launch game", "Failed to launch game", msgbox::IconType::Error);}
+                                        },
+                                        Platform::Epic => {
+                                            let launch_url = format!("com.epicgames.launcher://apps/b7b42e2078524ab386a8b2a9856ef557%3Ac80a76de890145edbe0d41679dbccc66%3Ad36336f190094951873ed6138ac208d8?action=launch&silent=true&{}", encode(self.launch_options.as_str()));
+                                            if let Err(_) = std::process::Command::new("cmd").arg("/C").arg("start")
+                                            .arg(launch_url).spawn() {
+                                                msgbox::create("Failed to launch game", "Failed to launch game", msgbox::IconType::Error);
+                                            }
+                                        },
+                                        Platform::Steam => {
+                                            // Untested with a Steam client
+                                            let launch_url = format!("steam:://run/2138710//{}", self.launch_options);
+                                            if let Err(_) = std::process::Command::new("cmd").arg("/C").arg("start")
+                                            .arg(launch_url).spawn() {
+                                                msgbox::create("Failed to launch game", "Failed to launch game", msgbox::IconType::Error);
+                                            }
+                                        }
+                                    };
                                 }
                             }
                         };

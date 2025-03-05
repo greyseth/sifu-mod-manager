@@ -5,7 +5,7 @@ use egui::Color32;
 use rfd::FileDialog;
 use serde::{Deserialize, Serialize};
 
-use crate::{mods::{self, scan_directory, Mod}, tools::text, ModManager};
+use crate::{mods::{self, scan_directory, Mod}, tools::text, ModManager, Platform};
 
 pub fn settings_window(ctx: &egui::Context, mod_manager: &mut ModManager) {
     egui::CentralPanel::default().show(ctx, |ui| {
@@ -41,6 +41,14 @@ pub fn settings_window(ctx: &egui::Context, mod_manager: &mut ModManager) {
         ui.add_space(10.0);
 
         ui.add(egui::TextEdit::singleline(&mut mod_manager.launch_options).hint_text("Executable launch options"));
+
+        ui.add_space(10.0);
+
+        egui::ComboBox::from_label("Select Platform").selected_text(mod_manager.platform.to_string()).show_ui(ui, |ui| {
+            ui.selectable_value(&mut mod_manager.platform, Platform::Epic, Platform::Epic.to_string());
+            ui.selectable_value(&mut mod_manager.platform, Platform::Steam, Platform::Steam.to_string());
+            ui.selectable_value(&mut mod_manager.platform, Platform::Direct, Platform::Direct.to_string());
+        });
 
         ui.add_space(10.0);
 

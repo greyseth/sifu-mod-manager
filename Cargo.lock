@@ -3308,6 +3308,7 @@ dependencies = [
  "rfd",
  "serde",
  "toml",
+ "urlencoding",
  "win-msgbox",
  "zip",
 ]
