@@ -16,6 +16,6 @@ Simple tool to easily enable/disable mods for Sifu. Written in Rust using [egui]
 4. Alternatively, directory to scan mods can be set on the application's settings
 5. Set target platform in application's settings, apply mods, and launch the game
 
-# Planned Feaatures
+# Planned Features
 - 7z file extraction
 - Download mods from [Nexus](https://nexusmods.com) directly in the app
