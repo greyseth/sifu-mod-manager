@@ -35,7 +35,7 @@ pub fn settings_window(ctx: &egui::Context, mod_manager: &mut ModManager) {
             };
 
             // FIXME: Refreshing doesn't work on settings page
-            if ui.button("Refresh mod list").clicked() {scan_directory(&mod_manager.mods_dir, &mut mod_manager.mods);}
+            if ui.button("Refresh mod list").clicked() {scan_directory(&mod_manager.mods_dir, &mut mod_manager.mods); println!("{:?}", mod_manager.mods);}
         });
 
         ui.add_space(10.0);

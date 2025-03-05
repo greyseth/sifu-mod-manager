@@ -65,6 +65,7 @@ pub fn scan_directory(mods_dir: &String, mods: &mut Vec<Mod>) -> Vec<Mod> {
         }else {msgbox::create("Couldn't scan mods", "Failed to read contents in mods folder", msgbox::IconType::Error);}
     }else {msgbox::create("Invalid path", "The provided mods scanning path is invalid", msgbox::IconType::Error);}
     
+    println!("{:?}", scanned_mods);
     scanned_mods
 }
 
@@ -83,6 +84,9 @@ pub fn clear_mods(game_dir: &str) {
 pub fn apply_mods(mod_manager: &mut ModManager) {
     clear_mods(&mod_manager.game_dir);
 
+    let mut success= 0;
+    let mut failed = 0;
+    
     let game_path = Path::new(&mod_manager.game_dir).parent();
     if let Some(path) = game_path {
         let enabled_mods: Vec<Mod> = mod_manager.mods.iter().filter(|m| m.enabled).cloned().collect();
@@ -91,10 +95,14 @@ pub fn apply_mods(mod_manager: &mut ModManager) {
             if mod_path.is_dir() {
                 let copied_files = copy_dir_all(mod_path, path.join("Sifu/Content/Paks/~mods"));
                 println!("{:?}", copied_files);
-                match copied_files {
-                    Ok(()) => msgbox::create("Applied selected mods", "Mods successfully applied", msgbox::IconType::Info),
-                    Err(err) => msgbox::create("Failed to apply mods", "An error has occurred", msgbox::IconType::Error),
-                };
+                // match copied_files {
+                //     Ok(()) => msgbox::create("Applied selected mods", "Mods successfully applied", msgbox::IconType::Info),
+                //     Err(err) => msgbox::create("Failed to apply mods", "An error has occurred", msgbox::IconType::Error),
+                // };
+                if let Err(_) = copied_files {
+                    msgbox::create("Failed to apply mods", "An error has occurred", msgbox::IconType::Error);
+                    failed += 1;
+                }else {success += 1;};
             }else {
                 if m.name.ends_with("zip") {
                     let zip_file = fs::File::open(mod_path);
@@ -106,27 +114,34 @@ pub fn apply_mods(mod_manager: &mut ModManager) {
                                 if let Ok(mut archive_file) = archive_file {
                                     let output_path = path.join("Sifu/Content/Paks/~mods").join(archive_file.name());
 
-                                    if archive_file.is_dir() {
-                                        fs::create_dir_all(output_path);
-                                    }else {
+                                    if archive_file.is_file() {
                                         let output_file = fs::File::create(&output_path);
                                         if let Ok(mut output_file) = output_file {
                                             std::io::copy(&mut archive_file, &mut output_file);
+                                            success += 1;
                                         }
                                     }
                                 }else {
                                     msgbox::create("Failed to extract file", format!("Failed to extract a file from {}", m.name).as_str(), msgbox::IconType::Error);
+                                    failed += 1;
                                 }
                             }
                         }else {extract_fail(&m.name);}
                     }else {extract_fail(&m.name);}
                 }else if m.name.ends_with("rar") {
-                    // TODO: Implement rar extraction
+                    let result = rar::Archive::extract_all(mod_path.to_string_lossy().to_string().as_str(), path.join("Sifu/Content/Paks/~mods").to_string_lossy().to_string().as_str(), "");
+                    if let Err(err) = result {
+                        msgbox::create("Failed to extract file", format!("Failed to read and extract {}: {}", m.name, err).as_str(), msgbox::IconType::Error);
+                        failed += 1;
+                    }else {success += 1;}
                 }else if m.name.ends_with("7z") {
-                    // TODO: Implement 7z extraction
+                    msgbox::create("Unsupported file format", "7z format is currently not supported, manual extraction is required", msgbox::IconType::Error);
+                    failed += 1;
                 }
             }
         }
+
+        msgbox::create("Finished applying mods", format!("Finished applying mods with {} successful and {} failed", success, failed).as_str(), msgbox::IconType::Info);
     }
 
     save_settings(mod_manager);

@@ -125,7 +125,13 @@ impl eframe::App for ModManager {
                             if self.game_dir.is_empty() {msgbox::create("No directory set", "Please set game directory in the settings", msgbox::IconType::Error);}
                             else {
                                 if !self.game_dir_valid {msgbox::create("Invalid game path", "Please enter a valid path to Sifu.exe", msgbox::IconType::Error);}
-                                else {save_settings(&self);}
+                                else {
+                                    save_settings(&self);
+
+                                    let mut launch_command = std::process::Command::new(&self.game_dir);
+                                    if !self.launch_options.is_empty() {launch_command.args(self.launch_options.split_whitespace());}
+                                    if let Err(_) = launch_command.spawn() {msgbox::create("Failed to launch game", "Failed to launch game", msgbox::IconType::Error);}
+                                }
                             }
                         };
                     });
