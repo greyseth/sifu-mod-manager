@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 eframe = "0.31.0"
 egui = "0.31.0"
+image = "0.25.5"
 msgbox = "0.7.0"
 rar = "0.2.0"
 rfd = "0.15.2"

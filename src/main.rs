@@ -4,7 +4,7 @@ use eframe::glow::NUM_EXTENSIONS;
 use egui::Color32;
 use mods::{apply_mods, scan_directory, Mod};
 use serde::{Deserialize, Serialize};
-use tools::text;
+use tools::{load_icon, text};
 use settings::{save_settings, settings_window};
 use urlencoding::encode;
 use win_msgbox::{CancelTryAgainContinue, Okay, OkayCancel};
@@ -182,7 +182,7 @@ impl eframe::App for ModManager {
 
 fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size([1000.0, 800.0]), ..Default::default()
+        viewport: egui::ViewportBuilder::default().with_inner_size([1000.0, 800.0]).with_icon(load_icon()), ..Default::default()
     };
 
     eframe::run_native("Sifu Mod Manager", options, Box::new(|_cc| Ok(Box::<ModManager>::default())))
