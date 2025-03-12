@@ -14,7 +14,8 @@ Simple tool to easily enable/disable mods for Sifu. Written in Rust using [egui]
 3. Put mods on the same folder as the executable (extracted mods should be placed in separate folders)
 ![File list](https://i.ibb.co.com/rRcRrB3s/Screenshot-2025-03-05-141029.png)
 4. Alternatively, directory to scan mods can be set on the application's settings
-5. Set target platform in application's settings, apply mods, and launch the game
+5. Run sifu-mod-manager.exe, and manage the settings and the mods you want to enable
+6. Launch the game from the mod manager
 
 # Planned Features
 - 7z file extraction
